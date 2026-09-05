@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hirviturvat</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Spline+Sans+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --primary: #527775; --secondary: #CBAF5A; --surface: #99A1AF; --on-surface: #4A5565;
+      --panel: rgba(10, 14, 16, .55); --line: rgba(153, 161, 175, .4);
+      --font: Helvetica, "Helvetica Neue", Arial, sans-serif; --mono: "Spline Sans Mono", "SF Mono", Menlo, monospace;
+      /* modular scale, base 12px, ratio 1.25 */
+      --t1: 12px; --t2: 15px; --t3: 19px; --t4: 24px; --t5: 30px; --t6: 37px; --t7: 47px; --t8: 58px; --t9: 73px;
+      --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #000; font-family: var(--font); color: var(--surface); }
+    canvas { display: block; }
+    #hud { position: fixed; inset: 0; pointer-events: none; }
+    #hud::before { content: ''; position: absolute; inset: 0;
+      background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.45) 100%); }
+    .box { position: absolute; padding: var(--s3) var(--s4); background: var(--panel); backdrop-filter: blur(4px);
+      clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+      font-size: var(--t2); line-height: 1.5; }
+    .label { display: block; font: 600 var(--t1)/1.4 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--secondary); }
+    .value { display: block; font: 300 var(--t6)/1.1 var(--mono); letter-spacing: .02em; color: #fff; }
+    .value.dead { color: #c8433a; }
+    .bar { position: relative; height: 3px; margin: var(--s2) 0 var(--s1); background: rgba(204,204,204,.18); overflow: hidden; }
+    .bar i { display: block; height: 100%; width: 100%; background: var(--primary); transition: width .15s linear; }
+    .bar.blue i { background: var(--secondary); }
+    #score { top: var(--s5); left: var(--s5); min-width: 210px; border-left: 2px solid var(--secondary); }
+    #score .row { display: flex; justify-content: space-between; gap: var(--s4); font: 400 var(--t2)/1.6 var(--mono); color: var(--surface); }
+    #score .row span:last-child { color: #fff; }
+    #timer { position: absolute; top: var(--s5); left: 50%; transform: translateX(-50%); width: 240px; text-align: center; padding: var(--s2) 0;
+      background: linear-gradient(rgba(8,10,12,.55), transparent); }
+    #timer .value { font-size: var(--t7); font-variant-numeric: tabular-nums; color: var(--secondary); }
+    #timer .bar { margin: var(--s1) 30px 0; }
+    #timer.urgent .value { color: #c8433a; }
+
+    /* centre console, Diablo style: health orb, key deck, sisu orb */
+    #console { position: absolute; bottom: var(--s4); left: 50%; transform: translateX(-50%); display: flex; align-items: flex-end; gap: var(--s3); }
+    #console .deck { position: relative; min-width: 470px; padding: var(--s2) var(--s4); background: var(--panel); backdrop-filter: blur(4px);
+      clip-path: polygon(12px 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%, 0 12px); border-top: 1px solid var(--line); }
+    #console .keys { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--s1) var(--s3); font: 500 var(--t1)/1.7 var(--mono);
+      text-transform: uppercase; letter-spacing: .02em; color: var(--surface); }
+    #console .keys b { display: inline-block; min-width: 12px; padding: 0 5px; margin-right: 3px; border: 1px solid var(--line); border-radius: 3px;
+      background: rgba(255,255,255,.06); color: #fff; font-weight: 700; text-align: center; }
+    #power { display: none; margin-bottom: var(--s2); }
+    #power .label { text-align: center; margin-bottom: var(--s1); }
+    #power .bar { height: 4px; margin: 0 40px; }
+    #power .bar i { width: 0; background: linear-gradient(90deg, var(--primary), var(--secondary)); }
+    #hint { position: absolute; left: 0; right: 0; top: -34px; text-align: center; opacity: 0; transition: opacity .3s;
+      font: 600 var(--t2)/1.4 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--secondary); }
+    .orb { position: relative; width: 104px; height: 104px; border-radius: 50%; overflow: hidden; flex: none;
+      background: rgba(10,14,16,.7); box-shadow: inset 0 0 0 3px rgba(153,161,175,.5), inset 0 -18px 30px rgba(0,0,0,.6), 0 6px 20px rgba(0,0,0,.5); }
+    .orb .fill { position: absolute; left: 0; right: 0; bottom: 0; height: 100%; transition: height .25s; }
+    .orb .fill::before { content: ''; position: absolute; left: -20%; right: -20%; top: -8px; height: 16px; border-radius: 50%;
+      background: rgba(255,255,255,.25); }
+    .orb .txt { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      font: 600 var(--t4)/1 var(--mono); color: #fff; text-shadow: 0 1px 3px #000; }
+    .orb .txt small { font-size: var(--t1); letter-spacing: .08em; text-transform: uppercase; opacity: .85; margin-top: 3px; }
+    #hpOrb .fill { background: radial-gradient(circle at 50% 30%, #d94a3c, #6e1410 70%); }
+    #sisuOrb .fill { background: radial-gradient(circle at 50% 30%, #e8cf7a, #7a6120 70%); }
+    #sisuOrb.ready { box-shadow: inset 0 0 0 3px var(--secondary), inset 0 -18px 30px rgba(0,0,0,.6), 0 0 24px rgba(203,175,90,.6); }
+    #sisuOrb.active { animation: pulseOrb .8s ease-in-out infinite alternate; }
+    @keyframes pulseOrb { from { box-shadow: 0 0 16px rgba(203,175,90,.5) } to { box-shadow: 0 0 40px rgba(203,175,90,1) } }
+
+    #tags { position: absolute; inset: 0; overflow: hidden; }
+    .carTag { position: absolute; transform: translate(-50%, -100%); padding: 2px var(--s2); font: 700 var(--t1)/1.6 var(--mono);
+      letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; color: #fff; background: rgba(8,10,12,.55);
+      border-bottom: 1px solid var(--secondary); }
+    .carTag::after { content: ''; position: absolute; left: 50%; top: 100%; width: 1px; height: 28px; background: var(--line); }
+    .carTag .arr { display: inline-block; margin-right: 6px; color: var(--secondary); }
+    .carTag.crashed { border-bottom-color: #c8433a; }
+    .carTag.crashed .arr { color: #c8433a; }
+
+    #blood { position: absolute; inset: 0; overflow: hidden; }
+    #blood i { position: absolute; border-radius: 50%; opacity: 0;
+      background: radial-gradient(circle, rgba(120,8,10,.85) 0%, rgba(120,8,10,.55) 35%, rgba(120,8,10,0) 70%);
+      animation: splat .25s ease-out both; filter: blur(1px); }
+    @keyframes splat { from { transform: scale(.2); opacity: 0 } to { transform: scale(1); opacity: .9 } }
+    #tunnel { position: absolute; inset: 0; opacity: 0; transition: opacity .4s;
+      background: radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,.92) 85%); }
+    #pulse { position: absolute; inset: 0; opacity: 0;
+      background: radial-gradient(ellipse at center, transparent 40%, rgba(134,52,45,.55) 100%); }
+    #wasted { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: radial-gradient(ellipse at center, rgba(82,119,117,.15), rgba(4,10,10,.72)); }
+    #wasted h1 { margin: 0; font-size: calc(var(--t9) * 1.6); font-weight: 700; letter-spacing: .06em; text-indent: .06em; color: var(--secondary);
+      text-shadow: 0 0 30px rgba(203,175,90,.6), 0 4px 0 #3a2a08; transform: scaleY(1.2); animation: slam .35s cubic-bezier(.2,1.4,.4,1) both; }
+    @keyframes slam { from { transform: scale(2.4, 3); opacity: 0 } to { transform: scale(1, 1.2); opacity: 1 } }
+    canvas.wasted { filter: grayscale(.85) contrast(1.15) brightness(.8); }
+    canvas.hit { filter: grayscale(.55) contrast(1.1) brightness(.9); transition: filter 1.5s; }
+    canvas.bullet { filter: saturate(.55) contrast(1.15) sepia(.25); }
+
+    /* the newspaper: an A4 portrait page that lands on the screen at the end of the round */
+    #paper { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.5); }
+    #paper .sheet { width: min(700px, 66vh, 96vw); aspect-ratio: 1 / 1.414; overflow: auto; padding: 18px 24px 16px; box-sizing: border-box;
+      color: #2a2218; background: #e9dcc0; background-image: radial-gradient(rgba(120,90,40,.12) 1px, transparent 1.5px), linear-gradient(#e9dcc0, #dccbaa);
+      background-size: 4px 4px, 100% 100%; box-shadow: 0 30px 60px rgba(0,0,0,.6), inset 0 0 80px rgba(90,60,20,.25);
+      font-family: Georgia, "Times New Roman", serif; font-size: 10.5px; line-height: 1.4; transform-origin: 50% 40%; animation: slap .55s cubic-bezier(.15,1.1,.3,1) both;
+      display: flex; flex-direction: column; }
+    #paper .top { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; border-bottom: 3px double #2a2218; padding-bottom: 6px; }
+    #paper .ear { border: 1px solid #2a2218; padding: 4px 6px; font-size: 9px; line-height: 1.3; }
+    #paper .ear b { display: block; text-transform: uppercase; letter-spacing: 1px; font-size: 8px; }
+    #paper .masthead { text-align: center; font-size: 34px; font-weight: 900; letter-spacing: 2px; line-height: 1; padding: 4px 8px; }
+    #paper .dateline { display: flex; justify-content: space-between; font-size: 8.5px; text-transform: uppercase; letter-spacing: 1px; padding: 4px 0; border-bottom: 1px solid #2a2218; }
+    #paper h2 { font-size: 26px; line-height: 1.02; margin: 10px 0 6px; text-transform: uppercase; letter-spacing: -.01em; }
+    #paper .deck { font-size: 12px; font-style: italic; margin: 0 0 6px; border-bottom: 1px solid #b9a88a; padding-bottom: 6px; }
+    #paper .byline { font-size: 8px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+    #paper .body { display: grid; grid-template-columns: 1fr 190px; gap: 14px; }
+    #paper .story { columns: 2; column-gap: 12px; column-rule: 1px solid #b9a88a; text-align: justify; hyphens: auto; }
+    #paper .story p { margin: 0 0 7px; }
+    #paper .story p:first-child::first-letter { font-size: 28px; float: left; line-height: .9; padding: 2px 4px 0 0; }
+    #paper figure { margin: 0; }
+    #paper figure img { display: block; width: 100%; aspect-ratio: 4/3; object-fit: cover; border: 1px solid #2a2218;
+      filter: sepia(.75) contrast(1.15) grayscale(.35) brightness(.95); background: #cbbb9b; }
+    #paper figcaption { font-size: 8.5px; font-style: italic; margin-top: 3px; }
+    #paper dl { margin: 8px 0 0; padding: 6px 8px; border: 1px solid #2a2218; font-size: 9px; }
+    #paper dt { font-weight: 700; text-transform: uppercase; letter-spacing: 1px; font-size: 7.5px; margin-top: 4px; }
+    #paper dd { margin: 0; }
+    #paper .lower { flex: 1; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 10px; border-top: 3px double #2a2218; padding-top: 8px; align-content: start; }
+    #paper .lower h3 { margin: 0 0 5px; font-size: 9px; text-transform: uppercase; letter-spacing: 2px; border-bottom: 2px solid #2a2218; }
+    #paper .lower h4 { margin: 6px 0 2px; font-size: 10.5px; }
+    #paper .lower p { margin: 0 0 4px; }
+    #paper .ad { border: 1px solid #2a2218; padding: 5px; margin-bottom: 6px; text-align: center; }
+    #paper .ad b { display: block; font-size: 11px; text-transform: uppercase; }
+    #paper .ad.box2 { border-width: 3px; border-style: double; }
+    #paper .small p { font-size: 8.5px; margin: 0 0 3px; border-bottom: 1px dotted #b9a88a; }
+    #paper .notice b { display: block; font-size: 8px; text-transform: uppercase; letter-spacing: 1px; margin-top: 5px; }
+    #paper .events ul { padding-left: 12px; margin: 4px 0 0; }
+    #paper .events li { margin: 0 0 3px; }
+    #paper .foot { margin-top: 8px; border-top: 1px solid #2a2218; padding-top: 5px; font-size: 9.5px; text-align: center; }
+    /* tone and tier: tabloid shouts in red, rural stays calm; the headline grows with the damage */
+    #paper.tabloid .masthead { background: #b3121a; color: #fff; font-family: Impact, "Arial Black", Helvetica, sans-serif; letter-spacing: 1px; }
+    #paper.tabloid h2 { font-family: Impact, "Arial Black", Helvetica, sans-serif; letter-spacing: 0; }
+    #paper.rural h2 { text-transform: none; font-weight: 700; }
+    #paper.tier-brief h2 { font-size: 18px; }
+    #paper.tier-story h2 { font-size: 26px; }
+    #paper.tier-front h2 { font-size: 44px; line-height: .95; }
+    #paper.tier-front.tabloid h2 { font-size: 56px; }
+    @keyframes slap { from { transform: scale(2.8) rotate(-28deg); opacity: 0 } 70% { transform: scale(.98) rotate(-2deg) } to { transform: scale(1) rotate(-1.5deg); opacity: 1 } }
+
+    /* the menu: a quiet panel on the left, the ridge breathing behind it */
+    #start { position: absolute; inset: 0; display: flex; align-items: center; pointer-events: none;
+      background: linear-gradient(90deg, rgba(8,10,12,.9) 0%, rgba(8,10,12,.7) 40%, transparent 72%); animation: settle 1.4s ease-out; }
+    @keyframes settle { from { opacity: 0 } to { opacity: 1 } }
+    #start .menu { pointer-events: auto; margin-left: clamp(24px, 8vw, 120px); width: min(440px, 80vw); padding: var(--s5);
+      background: var(--panel); backdrop-filter: blur(10px); border-left: 2px solid var(--secondary);
+      clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px)); }
+    #start h1 { margin: 0; font: 300 var(--t7)/1.1 var(--font); letter-spacing: .22em; text-indent: .22em; color: #fff; }
+    #start .place { margin: var(--s2) 0 var(--s5); font: 400 var(--t1)/1.6 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--surface); }
+    #start ul { list-style: none; margin: 0 0 var(--s5); padding: 0; border-top: 1px solid var(--line); }
+    #start li { display: flex; align-items: baseline; gap: var(--s3); padding: var(--s3) 0; border-bottom: 1px solid var(--line); cursor: pointer;
+      font: 400 var(--t3)/1.3 var(--font); color: #fff; transition: color .2s, padding-left .2s; }
+    #start li:hover { color: var(--secondary); padding-left: var(--s2); }
+    #start li span { flex: 1; font: 400 var(--t2)/1.3 var(--mono); color: var(--surface); }
+    #start li kbd { font: 500 var(--t1)/1.6 var(--mono); padding: 0 6px; border: 1px solid var(--line); border-radius: 3px; color: var(--surface); }
+    #start .best { margin: 0 0 var(--s2); font: 400 var(--t2)/1.5 var(--mono); color: var(--surface); }
+    #start .best b { font-weight: 500; color: var(--secondary); }
+    #start .tip { margin: 0; font: 400 var(--t2)/1.5 var(--font); color: var(--surface); }
+    #hud.menu #score, #hud.menu #timer, #hud.menu #console, #hud.menu #tags { opacity: 0; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div id="hud" class="menu">
+    <div id="tags"></div>
+    <div id="score" class="box">
+      <span class="label">Damage</span><span class="value" id="damage">0 €</span>
+      <div class="row"><span>Best</span><span id="best">0 €</span></div>
+      <div class="row"><span>Speed</span><span id="speed">0 km/h</span></div>
+    </div>
+    <div id="timer"><span class="label" id="timerLabel">Time</span><span class="value" id="timerValue"></span>
+      <div class="bar blue"><i id="timerBar"></i></div></div>
+    <div id="blood"></div>
+    <div id="tunnel"></div>
+    <div id="pulse"></div>
+    <div id="console">
+      <div id="hpOrb" class="orb"><div class="fill" id="hpFill"></div><div class="txt"><span id="hpText">100</span><small>Health</small></div></div>
+      <div class="deck">
+        <div id="hint">The forest is too dense</div>
+        <div id="power"><span class="label">Jump</span><div class="bar"><i></i></div></div>
+        <div class="keys">
+          <span><b>W</b><b>A</b><b>S</b><b>D</b> move</span><span><b>Shift</b> run</span><span><b>Space</b> jump</span><span><b>Q</b> adrenaline</span><span><b>Tab</b> bullet time</span>
+          <span><b>F1</b><b>F2</b><b>F3</b> camera</span><span><b>R</b> restart</span><span><b>T</b> weather</span>
+        </div>
+      </div>
+      <div id="sisuOrb" class="orb"><div class="fill" id="sisuFill"></div><div class="txt"><span id="sisuText">70</span><small>Stamina</small></div></div>
+    </div>
+    <div id="wasted" class="hidden"><h1>CRASH</h1></div>
+    <div id="paper" class="hidden"><div class="sheet">
+      <div class="top">
+        <div class="ear"><b>Sää</b><span id="paperWeather"></span></div>
+        <div class="masthead" id="masthead">ASIKKALAN SANOMAT</div>
+        <div class="ear"><b>Lotto</b><span id="paperLotto"></span></div>
+      </div>
+      <div class="dateline"><span id="paperDate"></span><span>Riippumaton maakuntalehti vuodesta 1921</span></div>
+      <h2 id="headline"></h2>
+      <p class="deck" id="deck"></p>
+      <div class="byline">Toimitus</div>
+      <div class="body">
+        <div class="story" id="story"></div>
+        <aside><figure><img id="photo" alt="Kuva tapahtumapaikalta"><figcaption>Tapahtumapaikka hetki onnettomuuden jälkeen. Kuva: lukija.</figcaption></figure>
+          <dl id="facts"></dl></aside>
+      </div>
+      <div class="lower">
+        <div><h3>Lyhyesti</h3><div id="briefs"></div></div>
+        <div><h3>Ilmoitukset</h3><div id="ads"></div><div class="small" id="small"></div></div>
+        <div><h3>Tiedotukset</h3><div class="notice" id="notices"></div><div class="events"><h3>Menovinkit</h3><ul id="events"></ul></div></div>
+      </div>
+      <div class="foot" id="paperSub"></div>
+    </div></div>
+    <div id="start"><div class="menu">
+      <h1>Hirviturvat</h1>
+      <p class="place">Pulkkilanharju · road 314 · Päijänne</p>
+      <ul>
+        <li id="menuStart">Start<span></span><kbd>Enter</kbd></li>
+        <li id="menuWeather">Weather<span id="menuWeatherVal"></span><kbd>T</kbd></li>
+        <li id="menuCamera">Camera<span id="menuCameraVal"></span><kbd>C</kbd></li>
+      </ul>
+      <p class="best">Best <b id="menuBest">0 €</b></p>
+      <p class="tip">You are the moose. The traffic is not your friend.</p>
+    </div></div>
+  </div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
