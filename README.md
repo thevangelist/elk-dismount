@@ -1,6 +1,6 @@
 # Elk Dismount
 
-![A bull moose standing on road 314, forest and fence behind](docs/screenshot.png)
+![A bull moose standing on road 314, forest and fence behind](docs/road-314.png)
 
 Finnish name: Hirviturvat.
 
