@@ -1,6 +1,6 @@
 # Elk Dismount
 
-![A bull moose standing on road 314, forest and fence behind](docs/road-314.png)
+![A bull moose galloping along road 314 at evening, a motorcycle coming the other way, low sun over the spruces](docs/evening-run.png)
 
 Finnish name: Hirviturvat.
 
@@ -91,6 +91,6 @@ colours the ground, places the trees, the shrubs, the sedge and the fallen logs.
 | `src/input.ts` | keyboard and pointer lock |
 
 Design notes (in Finnish) live in `docs/plans/`. HUD colours and type follow `DESIGN.md`.
-Fixed views for screenshots: `?cam=2&hour=13&weather=sunny&pitch=25&x=-200&off=20`.
+Fixed views for screenshots: `?cam=2&hour=17.5&weather=sunny&pitch=-3&yaw=8&x=-200&off=1.75`.
 
 **Press Enter. The traffic is not your friend.**

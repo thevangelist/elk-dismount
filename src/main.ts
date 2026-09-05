@@ -47,7 +47,7 @@ async function main() {
 
   const terrain = buildTerrain(scene, world);
   const sky = new Sky(scene);
-  // ?cam=2&hour=13&weather=sunny&pitch=25: fixed view for screenshots
+  // ?cam=2&hour=13&weather=sunny&pitch=25&yaw=0: fixed view for screenshots
   const params = new URLSearchParams(location.search);
   if (params.has('hour')) sky.hour = Number(params.get('hour'));
   if (params.has('weather')) sky.weather = params.get('weather') as Weather;
@@ -157,7 +157,7 @@ async function main() {
     score = 0;
     slowmo = 0;
     wasted = frozen = false;
-    camYaw = moose.yaw + Math.PI;
+    camYaw = params.has('yaw') ? deg(Number(params.get('yaw'))) : moose.yaw + Math.PI;
     gimbal = moose.yaw;
     hud.wasted.classList.add('hidden');
     hud.paper.classList.add('hidden');
