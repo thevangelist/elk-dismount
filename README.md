@@ -1,5 +1,7 @@
 # Elk Dismount
 
+![A moose on road 314, a sports car stopped, a hatchback tumbling](docs/screenshot.png)
+
 Finnish name: Hirviturvat.
 
 You are a bull moose on Pulkkilanharju. Road 314 runs the top of the esker, boats cross the
