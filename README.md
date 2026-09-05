@@ -4,6 +4,9 @@
 
 Finnish name: Hirviturvat.
 
+Built as a test of Claude Fable 5.1: the code, the design notes and this README came out of
+conversations with the model.
+
 You are a bull moose on Pulkkilanharju. Road 314 runs the top of the esker, boats cross the
 strait under Karisalmi bridge, and the traffic does not stop for you. Cause as much damage as
 you can. Do not die. Every round ends in the regional paper.
