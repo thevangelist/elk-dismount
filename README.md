@@ -1,4 +1,6 @@
-# Hirviturvat
+# Elk Dismount
+
+Finnish name: Hirviturvat.
 
 You are a bull moose on Pulkkilanharju. Road 314 runs the top of the esker, boats cross the
 strait under Karisalmi bridge, and the traffic does not stop for you. Cause as much damage as
